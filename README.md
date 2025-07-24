@@ -8,6 +8,7 @@ A full-stack Dance Workshop Management System developed using **HTML, CSS, PHP, 
 
 ### 🖥️ Home Page
 ![Home Page](screenshots/homepage.png)
+https://github.com/gawalishankar/Dance-Workshop-Project/tree/main/danceworkshop-master/images
 
 ### 🔐 Admin Login
 ![Admin Login](screenshots/admin-login.png)
