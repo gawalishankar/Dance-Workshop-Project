@@ -56,10 +56,10 @@ danceworkshop/
 
 ## 🚀 How to Run Locally
 
-### 🔧 1. Clone the Repository
-
+🔧 1. Clone the Repository
 git clone https://github.com/gawalishankar/Dance-Workshop-Project.git
 cd Dance-Workshop-Project/danceworkshop-master/danceworkshop
+
 🖥️ 2. Set Up Local Server
 Install XAMPP or WAMP
 
