@@ -59,14 +59,14 @@ http://localhost:8080
 ```bash
 aws ecr create-repository \
 --repository-name dance-workshop \
---region ap-south-1
+--region us-east-2
 ```
 
 Login to ECR:
 
 ```bash
 aws ecr get-login-password --region ap-south-1 \
-| docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com
+| docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.us-east-2.amazonaws.com
 ```
 
 ---
@@ -74,8 +74,8 @@ aws ecr get-login-password --region ap-south-1 \
 ## Step 4: Push Image to ECR (Manual Test)
 
 ```bash
-docker tag dance-workshop:latest <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/dance-workshop:latest
-docker push <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/dance-workshop:latest
+docker tag dance-workshop:latest <AWS_ACCOUNT_ID>.dkr.ecr.us-east-2.amazonaws.com/dance-workshop:latest
+docker push <AWS_ACCOUNT_ID>.dkr.ecr.us-east-2.amazonaws.com/dance-workshop:latest
 ```
 
 ---
@@ -138,13 +138,13 @@ sudo yum install mysql -y
 Download SQL file:
 
 ```bash
-aws s3 cp s3://<bucket-name>/danceworkshop.sql .
+aws s3 cp s3://<bucket-name>/dance.sql .
 ```
 
 Import to RDS:
 
 ```bash
-mysql -h <RDS-ENDPOINT> -u admin -p danceworkshop < danceworkshop.sql
+mysql -h <RDS-ENDPOINT> -u admin -p danceworkshop < dance.sql
 ```
 
 Terminate EC2 after import.
