@@ -1,168 +1,261 @@
-# Dance Workshop Management System – AWS ECS Deployment
+# Dance Workshop Project – AWS ECS Deployment (DevOps)
 
-This project is a **PHP + MySQL web application** deployed on **AWS ECS (Fargate)** using **Docker, Amazon ECR, RDS, and GitHub Actions CI/CD**.  
-The goal of this repository is to demonstrate **real-world DevOps practices** such as containerization, CI/CD automation, cloud deployment, and infrastructure understanding.
-
-
-## 🚀 Project Overview
-
-The **Dance Workshop Management System** allows users to manage dance workshops, registrations, and related information using a PHP-based web application backed by a MySQL database.
-
-
-## 🛠 Tech Stack
-
-### Application
-- PHP 8.1
-- Apache Web Server
-- MySQL
-
-### DevOps & Cloud
-- Docker
-- GitHub Actions (CI)
-- Amazon ECR (Container Registry)
-- Amazon ECS (Fargate)
-- Application Load Balancer (ALB)
-- Amazon RDS (MySQL)
-- Amazon S3 (DB backup/import)
-- Amazon CloudWatch (Logs & Monitoring)
-
-
-## 🧱 Architecture
-
-GitHub Repository
-↓
-GitHub Actions (CI)
-↓
-Docker Image
-↓
-Amazon ECR
-↓
-Amazon ECS (Fargate)
-↓
-Application Load Balancer
-↓
-Public Application URL
-
-Database:
-Amazon RDS (MySQL)
-
-
-## 📁 Repository Structure
-
-.
-├── danceworkshop-master/
-│ └── danceworkshop/ # PHP application source code
-├── Dockerfile # Docker image definition
-├── .dockerignore
-├── .github/
-│ └── workflows/
-│ └── docker-ecr.yml # GitHub Actions CI pipeline
-└── README.md
-
-
-## 🐳 Dockerization
-
-The application is containerized using Docker.
-
-### Dockerfile
-- Uses `php:8.1-apache`
-- Installs required MySQL PHP extensions
-- Copies application code to `/var/www/html`
-- Exposes port `80`
+This repository contains a PHP + MySQL web application deployed on **AWS ECS (Fargate)** using **Docker, Amazon ECR, RDS, ALB, and GitHub Actions CI**.
 
 ---
 
-## 🔁 CI Pipeline (GitHub Actions)
+## Architecture
 
-The CI pipeline automatically:
-1. Checks out the code
-2. Builds the Docker image
-3. Logs in to Amazon ECR
-4. Pushes the image to ECR
-
-Pipeline runs on every push to the `main` branch.
+GitHub → GitHub Actions (CI) → Amazon ECR → Amazon ECS (Fargate) → Application Load Balancer  
+Database → Amazon RDS (MySQL)
 
 ---
 
-## 🗄 Database Setup (Amazon RDS)
+## Prerequisites
 
-- Engine: MySQL
-- Database name: `danceworkshop`
-- Credentials provided via ECS environment variables
-- Database initialized using an SQL dump file
+- AWS Account
+- IAM User with permissions for ECS, ECR, RDS, EC2, ELB, IAM, CloudWatch
+- AWS CLI installed
+- Docker installed
+- Git installed
 
-### Database Import Flow
-SQL File → Amazon S3 → EC2 (MySQL Client) → Amazon RDS
+Configure AWS CLI:
+```bash
+aws configure
+````
 
+---
 
-## 🚢 Deployment on AWS ECS (Fargate)
+## Step 1: Clone Repository
 
-### ECS Components Used
-- ECS Cluster (Fargate)
-- Task Definition
-- ECS Service
-- Application Load Balancer
-- IAM Roles
-- CloudWatch Logs
+```bash
+git clone https://github.com/gawalishankar/Dance-Workshop-Project.git
+cd Dance-Workshop-Project
+```
 
-### Environment Variables Used
+---
+
+## Step 2: Dockerize the Application
+
+Ensure `Dockerfile` exists in the project root.
+
+Build and test locally:
+
+```bash
+docker build -t dance-workshop .
+docker run -d -p 8080:80 dance-workshop
+```
+
+Verify in browser:
+
+```
+http://localhost:8080
+```
+
+---
+
+## Step 3: Create Amazon ECR Repository
+
+```bash
+aws ecr create-repository \
+--repository-name dance-workshop \
+--region ap-south-1
+```
+
+Login to ECR:
+
+```bash
+aws ecr get-login-password --region ap-south-1 \
+| docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com
+```
+
+---
+
+## Step 4: Push Image to ECR (Manual Test)
+
+```bash
+docker tag dance-workshop:latest <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/dance-workshop:latest
+docker push <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/dance-workshop:latest
+```
+
+---
+
+## Step 5: Setup GitHub Actions CI
+
+Add GitHub Secrets:
+
+* AWS_ACCESS_KEY_ID
+* AWS_SECRET_ACCESS_KEY
+* AWS_REGION
+* AWS_ACCOUNT_ID
+* ECR_REPOSITORY
+
+Push code to `main` branch to trigger CI.
+
+Verify image in:
+
+```
+AWS Console → ECR → Images
+```
+
+---
+
+## Step 6: Create RDS MySQL Database
+
+* Engine: MySQL
+* DB Name: danceworkshop
+* Username: admin
+* Password: strong password
+* Public access: No
+* VPC: Same as ECS
+
+Ensure security group allows:
+
+```
+Inbound 3306 from ECS security group
+```
+
+---
+
+## Step 7: Import Database Using S3 and EC2
+
+Upload SQL file to S3:
+
+```bash
+aws s3 cp danceworkshop.sql s3://<bucket-name>/
+```
+
+Launch EC2 with IAM role:
+
+* Policy: AmazonS3ReadOnlyAccess
+
+Install MySQL client:
+
+```bash
+sudo yum install mysql -y
+```
+
+Download SQL file:
+
+```bash
+aws s3 cp s3://<bucket-name>/danceworkshop.sql .
+```
+
+Import to RDS:
+
+```bash
+mysql -h <RDS-ENDPOINT> -u admin -p danceworkshop < danceworkshop.sql
+```
+
+Terminate EC2 after import.
+
+---
+
+## Step 8: Create ECS Cluster
+
+AWS Console:
+
+```
+ECS → Clusters → Create Cluster → Fargate
+```
+
+Cluster name:
+
+```
+dance-workshop-cluster
+```
+
+---
+
+## Step 9: Create IAM Role for ECS Task
+
+Create role:
+
+* Trusted entity: ECS
+* Policy: AmazonECSTaskExecutionRolePolicy
+
+Role name:
+
+```
+ecsTaskExecutionRole
+```
+
+---
+
+## Step 10: Create ECS Task Definition
+
+* Launch type: Fargate
+* CPU: 256
+* Memory: 512
+* Network mode: awsvpc
+* Container port: 80
+* Image: ECR image URI
+* Environment variables:
+
+```
 DB_HOST
 DB_NAME
 DB_USER
 DB_PASS
+```
 
-
-## 🌐 Application Access
-
-The application is exposed using an **Application Load Balancer**.
-
-http://<ALB-DNS-NAME>
-
-
-## 📊 Monitoring & Logs
-
-- Logs are stored in **Amazon CloudWatch**
-- ECS task logs can be used for debugging and monitoring
-
-
-## 🔐 Security Best Practices
-
-- IAM roles used instead of hardcoded credentials
-- Database access restricted via security groups
-- GitHub Secrets used for AWS credentials
-- RDS not publicly accessibl
-
-## 🧠 DevOps Learning Outcomes
-
-This project demonstrates:
-- Dockerizing legacy PHP applications
-- CI automation using GitHub Actions
-- Container image management with Amazon ECR
-- Serverless container deployment with ECS Fargate
-- Database provisioning with Amazon RDS
-- Secure cloud deployments using IAM
-- Real-world DevOps workflow and architecture
-
-
-## 🧹 Cleanup (Cost Optimization)
-
-To avoid unnecessary AWS costs:
-- Scale ECS service to 0
-- Stop or delete RDS instance
-- Delete ALB and ECR images when not in use
-
-
-## 📌 Future Enhancements
-
-- Infrastructure as Code using Terraform
-- CD pipeline to auto-deploy to ECS
-- HTTPS using ACM
-- Secrets Manager integration
-- Auto Scaling policies
+Register task definition.
 
 ---
 
-## 👨‍💻 Author
+## Step 11: Create Application Load Balancer
 
-**DevOps Engineer Project**  
-Built to demonstrate hands-on DevOps and AWS ECS deployment skills.
+* Type: Application Load Balancer
+* Scheme: Internet-facing
+* Listener: HTTP 80
+* Target type: IP
+
+---
+
+## Step 12: Create ECS Service
+
+* Cluster: dance-workshop-cluster
+* Launch type: Fargate
+* Desired tasks: 2
+* Auto-assign public IP: ENABLED
+* Attach ALB and target group
+* Container port: 80
+
+---
+
+## Step 13: Access Application
+
+Get ALB DNS:
+
+```
+EC2 → Load Balancers → DNS Name
+```
+
+Open in browser:
+
+```
+http://<ALB-DNS>
+```
+
+---
+
+## Step 14: Logs & Monitoring
+
+View logs:
+
+```
+CloudWatch → Log Groups → /ecs/dance-workshop
+```
+
+---
+
+## Cleanup (Cost Saving)
+
+```bash
+Scale ECS service to 0
+Delete ALB
+Stop or delete RDS
+Delete ECR images
+```
+
+---
